@@ -286,6 +286,9 @@
             <div class="header-desc">Dinamikus lista (sorszámozott, szűrhető, rendezhető).</div>
         </div>
         <div>
+            <button class="btn" id="blacklist-clear-btn" onclick="clearBlacklist()" style="display: none; margin-right: 10px;">
+                ♻️ Feketelista ürítése
+            </button>
             <button class="btn btn-primary" onclick="exportData()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                 Értékelések Másolása
@@ -342,6 +345,17 @@
 
     // Betöltjük a korábban mentett értékeléseket localStorage-ből
     let savedData = JSON.parse(localStorage.getItem(storageKey)) || {};
+    let blacklistedFiles = JSON.parse(localStorage.getItem('kriszi_pioca_blacklist')) || [];
+
+    function updateBlacklistUI() {
+        const btn = document.getElementById('blacklist-clear-btn');
+        if (blacklistedFiles.length > 0) {
+            btn.style.display = 'inline-flex';
+            btn.innerHTML = `♻️ Feketelista ürítése (${blacklistedFiles.length})`;
+        } else {
+            btn.style.display = 'none';
+        }
+    }
 
     // 1. LÉPÉS: Fájlok betöltése
     async function loadFiles() {
@@ -363,16 +377,20 @@
 
     // 2. LÉPÉS: Adatszerkezet felépítése
     function buildData() {
-        processedData = rawFiles.map((file, index) => {
-            const data = savedData[file] || { score: null, comment: '', status: '' };
-            return {
-                id: index + 1, // Fix sorszám az ABC sorrend alapján
-                file: file,
-                score: data.score,
-                comment: data.comment || '',
-                status: data.status || ''
-            };
-        });
+        let currentId = 1;
+        processedData = rawFiles
+            .filter(file => !blacklistedFiles.includes(file))
+            .map((file) => {
+                const data = savedData[file] || { score: null, comment: '', status: '' };
+                return {
+                    id: currentId++,
+                    file: file,
+                    score: data.score,
+                    comment: data.comment || '',
+                    status: data.status || ''
+                };
+            });
+        updateBlacklistUI();
     }
 
     // 3. LÉPÉS: Rendezés beállítása
@@ -463,6 +481,9 @@
                     <a href="${row.file}" target="_blank" class="btn">
                         Megnyitás
                     </a>
+                    <button class="btn" onclick="blacklistFile('${row.file}')" style="margin-left: 5px; border-color: var(--danger); color: var(--danger);">
+                        🗑️ Elrejtés
+                    </button>
                 </td>
                 <td class="col-status">
                     <div class="status-container">
@@ -530,6 +551,24 @@
 
         const rowData = processedData.find(r => r.file === file);
         if(rowData) rowData.comment = data.comment;
+    }
+
+    window.blacklistFile = function(file) {
+        if(confirm(`Biztosan feketelistára teszed ezt a fájlt? Később nem fog megjelenni a listában: ${file}`)) {
+            blacklistedFiles.push(file);
+            localStorage.setItem('kriszi_pioca_blacklist', JSON.stringify(blacklistedFiles));
+            buildData();
+            renderTable();
+        }
+    }
+
+    window.clearBlacklist = function() {
+        if(confirm(`Biztosan üríted a feketelistát? (${blacklistedFiles.length} fájl újra megjelenik)`)) {
+            blacklistedFiles = [];
+            localStorage.setItem('kriszi_pioca_blacklist', JSON.stringify(blacklistedFiles));
+            buildData();
+            renderTable();
+        }
     }
 
     // --- EXPORTÁLÁS ---

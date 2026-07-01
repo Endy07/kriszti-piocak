@@ -1,22 +1,21 @@
 @echo off
-chcp 65001 >nul
 echo ========================================================
-echo Piócás Weboldal Feltöltő és Frissítő Szkript
+echo Piocas Weboldal Feltolto es Frissito Szkript
 echo ========================================================
 echo.
-echo 1. Készítem a fájl listát (files.json)...
+echo 1. Keszitem a fajl listat (files.json)...
 powershell -ExecutionPolicy Bypass -File frissit.ps1
 
-echo 2. Fájlok listája sikeresen frissítve.
+echo 2. Fajlok listaja sikeresen frissitve.
 echo.
 
-echo 3. Fájlok szinkronizálása a GitHub-al...
+echo 3. Fajlok szinkronizalasa a GitHub-al...
 git add .
-git commit -m "Automatikus feltöltés: frissült a piócás weboldalak listája"
+git commit -m "Automatikus feltoltes: frissult a piocas weboldalak listaja"
 git push
 
 echo.
 echo ========================================================
-echo Kész! A fájlok kimentek a GitHub-ra.
+echo Kesz! A fajlok kimentek a GitHub-ra.
 echo ========================================================
 pause
