@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hello World!</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: #1a1a2e;
+    color: #eaeaea;
+    font-family: system-ui, sans-serif;
+    overflow: hidden;
+  }
+  h1 {
+    font-size: 4rem;
+    font-weight: 200;
+    letter-spacing: 0.05em;
+    margin-bottom: 2rem;
+  }
+  button {
+    padding: 1rem 3rem;
+    font-size: 1rem;
+    font-family: inherit;
+    font-weight: 300;
+    letter-spacing: 0.1em;
+    color: #1a1a2e;
+    background: #eaeaea;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+  }
+  button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 30px rgba(234,234,234,0.3);
+  }
+  button:active {
+    transform: scale(0.97);
+  }
+  canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 999;
+  }
+</style>
+</head>
+<body>
+  <h1>Hello World!</h1>
+  <button id="confettiBtn">🎉 Konfetti!</button>
+  <canvas id="confetti"></canvas>
+
+<script>
+const canvas = document.getElementById('confetti');
+const ctx = canvas.getContext('2d');
+let particles = [];
+let animating = false;
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+const COLORS = [
+  '#ff6b6b','#ffd93d','#6bcb77','#4d96ff',
+  '#ff922b','#cc5de8','#20c997','#ff69b4',
+  '#00cec9','#fd79a8','#ffeaa7','#55efc4'
+];
+
+class Particle {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.size = Math.random() * 8 + 4;
+    this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+    this.vx = (Math.random() - 0.5) * 16;
+    this.vy = (Math.random() - 1) * 14 - 4;
+    this.gravity = 0.25;
+    this.friction = 0.98;
+    this.rotation = Math.random() * 360;
+    this.rotationSpeed = (Math.random() - 0.5) * 12;
+    this.opacity = 1;
+    this.decay = 0.005 + Math.random() * 0.01;
+    this.shape = Math.random() > 0.5 ? 'rect' : 'circle';
+  }
+
+  update() {
+    this.vy += this.gravity;
+    this.vx *= this.friction;
+    this.x += this.vx;
+    this.y += this.vy;
+    this.rotation += this.rotationSpeed;
+    this.opacity -= this.decay;
+  }
+
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate((this.rotation * Math.PI) / 180);
+    ctx.globalAlpha = Math.max(0, this.opacity);
+    ctx.fillStyle = this.color;
+
+    if (this.shape === 'rect') {
+      ctx.fillRect(-this.size / 2, -this.size / 4, this.size, this.size / 2);
+    } else {
+      ctx.beginPath();
+      ctx.arc(0, 0, this.size / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+function burst(x, y, count = 120) {
+  for (let i = 0; i < count; i++) {
+    particles.push(new Particle(x, y));
+  }
+  if (!animating) {
+    animating = true;
+    animate();
+  }
+}
+
+function animate() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  particles = particles.filter(p => p.opacity > 0 && p.y < canvas.height + 50);
+
+  if (particles.length === 0) {
+    animating = false;
+    return;
+  }
+
+  particles.forEach(p => {
+    p.update();
+    p.draw();
+  });
+
+  requestAnimationFrame(animate);
+}
+
+document.getElementById('confettiBtn').addEventListener('click', (e) => {
+  const rect = e.target.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top;
+  burst(cx, cy, 150);
+
+  // Extra bursts from sides for more drama
+  setTimeout(() => burst(canvas.width * 0.2, canvas.height * 0.3, 60), 100);
+  setTimeout(() => burst(canvas.width * 0.8, canvas.height * 0.3, 60), 150);
+});
+</script>
+</body>
+</html>

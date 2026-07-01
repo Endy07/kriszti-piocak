@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piócás Weboldal Értékelő Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --surface: #1a2235;
+            --surface-hover: #232d46;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --border: #2e3c5a;
+            --success: #10b981;
+            --score-bg: #1e293b;
+            --score-active: #3b82f6;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 2rem;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .header-desc {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .btn {
+            background-color: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            background-color: var(--surface-hover);
+        }
+
+        .btn-primary {
+            background-color: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
+            border-color: var(--accent-hover);
+        }
+
+        .table-wrapper {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        th {
+            background-color: rgba(0, 0, 0, 0.2);
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .filename {
+            font-family: monospace;
+            color: #60a5fa;
+            font-size: 0.9rem;
+        }
+
+        /* Kattintható számok dizájnja */
+        .score-container {
+            display: flex;
+            gap: 4px;
+        }
+
+        .score-btn {
+            background-color: var(--score-bg);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .score-btn:hover {
+            background-color: var(--surface-hover);
+            color: white;
+        }
+
+        .score-btn.active {
+            background-color: var(--score-active);
+            border-color: var(--score-active);
+            color: white;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+
+        .comment-input {
+            width: 100%;
+            max-width: 400px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 0.6rem;
+            border-radius: 6px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 40px;
+            box-sizing: border-box;
+        }
+
+        .comment-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        #notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--success);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: none;
+            font-weight: 500;
+            animation: slideIn 0.3s ease-out forwards;
+            z-index: 9999;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div>
+            <h1>Piócás Weboldal Variációk</h1>
+            <div class="header-desc">Különböző AI modellekkel generált verziók listája. Pontozd őket 0-10-ig és írd le a véleményed!</div>
+        </div>
+        <div>
+            <button class="btn btn-primary" onclick="exportData()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Értékelések Másolása
+            </button>
+        </div>
+    </header>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Fájlnév / Verzió</th>
+                    <th>Művelet</th>
+                    <th>Pontszám (0-10)</th>
+                    <th>Megjegyzés (Mi tetszik/Mi nem?)</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                <tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Betöltés...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="notification">Értékelések kimásolva a vágólapra! Most már beillesztheted (Ctrl+V) Messengerbe vagy Discordba.</div>
+
+<script>
+    const tbody = document.getElementById('table-body');
+    const storageKey = 'kriszi_pioca_ratings';
+
+    // Betöltjük a korábban mentett értékeléseket
+    let savedData = JSON.parse(localStorage.getItem(storageKey)) || {};
+
+    // Fájlok dinamikus betöltése
+    async function loadFiles() {
+        try {
+            const response = await fetch('files.json');
+            if (!response.ok) throw new Error("files.json nem található");
+            const files = await response.json();
+            renderTable(files);
+        } catch (error) {
+            console.log("Nem sikerült betölteni a files.json-t. Lehet, hogy még nem futtattad le a feltöltő szkriptet?");
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #ef4444;">Hiba: Nem találom a fájl listát (files.json). Kérlek futtasd le a 'feltoltes.bat' szkriptet!</td></tr>`;
+        }
+    }
+
+    // Táblázat generálása
+    function renderTable(files) {
+        tbody.innerHTML = '';
+        
+        files.forEach((file) => {
+            const tr = document.createElement('tr');
+            const data = savedData[file] || { score: null, comment: '' };
+
+            // Generáljuk a 0-10 gombokat
+            let scoreButtonsHtml = '<div class="score-container">';
+            for(let i = 0; i <= 10; i++) {
+                const isActive = data.score == i ? 'active' : '';
+                scoreButtonsHtml += `<div class="score-btn ${isActive}" onclick="handleScoreClick(this, '${file}', ${i})">${i}</div>`;
+            }
+            scoreButtonsHtml += '</div>';
+
+            tr.innerHTML = `
+                <td><span class="filename">${file}</span></td>
+                <td>
+                    <a href="${file}" target="_blank" class="btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                        Megnyitás
+                    </a>
+                </td>
+                <td>
+                    ${scoreButtonsHtml}
+                </td>
+                <td>
+                    <input type="text" class="comment-input" value="${data.comment}" placeholder="Ide írd a véleményed..." oninput="saveComment('${file}', this.value)">
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Pontszámra kattintás kezelése
+    window.handleScoreClick = function(element, file, selectedScore) {
+        if (!savedData[file]) {
+            savedData[file] = { score: null, comment: '' };
+        }
+
+        const currentScore = savedData[file].score;
+
+        // Ha már volt pontozva és másra kattint, kérdezzünk rá
+        if (currentScore !== null && currentScore != selectedScore) {
+            const confirmed = confirm(`Ezt az oldalt már értékelted (${currentScore} pont). Biztosan módosítod ${selectedScore} pontra?`);
+            if (!confirmed) return; // Ha mégsem, megszakítjuk
+        }
+
+        // Pontszám frissítése
+        savedData[file].score = selectedScore;
+        localStorage.setItem(storageKey, JSON.stringify(savedData));
+
+        // Gombok vizuális frissítése (csak ebben a sorban)
+        const container = element.parentElement;
+        const allBtns = container.querySelectorAll('.score-btn');
+        allBtns.forEach(btn => btn.classList.remove('active'));
+        element.classList.add('active');
+    }
+
+    // Megjegyzés mentése
+    window.saveComment = function(file, commentText) {
+        if (!savedData[file]) {
+            savedData[file] = { score: null, comment: '' };
+        }
+        savedData[file].comment = commentText;
+        localStorage.setItem(storageKey, JSON.stringify(savedData));
+    }
+
+    // Exportálás vágólapra
+    window.exportData = function() {
+        const currentData = JSON.parse(localStorage.getItem(storageKey)) || {};
+        let exportText = "📋 PIÓCÁS OLDALAK ÉRTÉKELÉSEI:\n\n";
+        let hasData = false;
+
+        for (const [file, data] of Object.entries(currentData)) {
+            if (data.score !== null || (data.comment && data.comment.trim() !== '')) {
+                hasData = true;
+                exportText += `🔹 ${file}\n`;
+                if (data.score !== null) exportText += `   Pontszám: ${data.score}/10\n`;
+                if (data.comment && data.comment.trim() !== '') exportText += `   Megjegyzés: ${data.comment}\n`;
+                exportText += "\n";
+            }
+        }
+
+        if (!hasData) {
+            exportText = "Még nincs kitöltve egyetlen értékelés sem. (Ha csak próbálod a gombot, tudsz másolni, de jelenleg üres!)";
+        }
+
+        // Vágólapra másolás
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(exportText).then(() => {
+                showNotification();
+            }).catch(err => {
+                alert("Nem sikerült a vágólapra másolni. Kérlek másold ki kézzel az alábbi ablakból:\n\n" + exportText);
+            });
+        } else {
+            const textArea = document.createElement("textarea");
+            textArea.value = exportText;
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showNotification();
+            } catch (err) {
+                alert("Kérlek másold ki kézzel az alábbi ablakból:\n\n" + exportText);
+            }
+            document.body.removeChild(textArea);
+        }
+    }
+
+    function showNotification() {
+        const notif = document.getElementById('notification');
+        notif.style.display = 'block';
+        setTimeout(() => {
+            notif.style.display = 'none';
+        }, 4000);
+    }
+
+    // Inicializálás
+    loadFiles();
+</script>
+
+</body>
+</html>
