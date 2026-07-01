@@ -360,7 +360,7 @@
     // 1. LÉPÉS: Fájlok betöltése
     async function loadFiles() {
         try {
-            const response = await fetch('files.json');
+            const response = await fetch('files.json?t=' + new Date().getTime());
             if (!response.ok) throw new Error("files.json nem található");
             
             rawFiles = await response.json();
