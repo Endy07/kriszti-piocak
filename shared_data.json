@@ -77,6 +77,12 @@
       "scoreKriszi": null,
       "comment": "",
       "status": ""
+    },
+    "Unsloth_Qwen3.6-27B-Q4_K_M/Start-Hermes-MAX_Qwen3.6-35B-A3B-UD-Q4_K_M_64kctx_geminiadta_Feladat_Hermes_Kriszi_1_7.html": {
+      "scoreEndi": 6,
+      "scoreKriszi": null,
+      "comment": "",
+      "status": ""
     }
   },
   "blacklist": [
