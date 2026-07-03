@@ -11,6 +11,12 @@
       "scoreKriszi": null,
       "comment": "",
       "status": ""
+    },
+    "ggufbench_Qwen3.6-27B-4bpw-16GB-VRAM/Start-Hermes_Qwen3.6-27B-4bpw-16GB-VRAM_64kctx_n_layers_nelkul_mod_Feladat_Hermes_Kriszi_1_2.html": {
+      "scoreEndi": 9,
+      "scoreKriszi": null,
+      "comment": "",
+      "status": ""
     }
   },
   "blacklist": [
