@@ -164,7 +164,7 @@
         .col-id { width: 60px; font-weight: bold; color: var(--accent); }
         .col-name { width: 250px; }
         .col-status { width: 200px; }
-        .col-score { width: 380px; }
+        .col-score { width: 450px; }
         .col-comment { width: auto; }
 
         .filename {
@@ -275,6 +275,46 @@
             to { transform: translateX(0); opacity: 1; }
         }
 
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 10000;
+        }
+        .modal {
+            background: var(--surface); padding: 2rem; border-radius: 12px; width: 450px;
+            border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .modal h2 { margin-top: 0; margin-bottom: 1.5rem; }
+        .modal label { display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem; }
+        .modal input { 
+            width: 100%; padding: 0.8rem; margin-bottom: 1.5rem; 
+            background: var(--bg-color); color: white; border: 1px solid var(--border); 
+            border-radius: 6px; box-sizing: border-box; font-family: monospace;
+        }
+        .modal input:focus { outline: none; border-color: var(--accent); }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 1rem; }
+
+        .saving-indicator {
+            display: inline-block;
+            width: 8px; height: 8px; border-radius: 50%;
+            background-color: var(--success);
+            margin-left: 10px;
+            box-shadow: 0 0 8px var(--success);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .saving-indicator.saving {
+            background-color: var(--warning);
+            box-shadow: 0 0 8px var(--warning);
+            opacity: 1;
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.5; }
+            100% { transform: scale(1.2); opacity: 1; }
+        }
+
     </style>
 </head>
 <body>
@@ -282,11 +322,14 @@
 <div class="container">
     <header>
         <div>
-            <h1>Piócás Weboldal Variációk</h1>
-            <div class="header-desc">Dinamikus lista (sorszámozott, szűrhető, rendezhető).</div>
+            <h1>Piócás Weboldal Variációk <span id="save-status" class="saving-indicator"></span></h1>
+            <div class="header-desc">Dinamikus lista Github szinkronizációval.</div>
         </div>
-        <div>
-            <button class="btn" id="blacklist-clear-btn" onclick="clearBlacklist()" style="display: none; margin-right: 10px;">
+        <div style="display: flex; gap: 10px;">
+            <button class="btn" onclick="openSettings()">
+                ⚙️ Beállítások (GitHub)
+            </button>
+            <button class="btn" id="blacklist-clear-btn" onclick="clearBlacklist()" style="display: none;">
                 ♻️ Feketelista ürítése
             </button>
             <button class="btn btn-primary" onclick="exportData()">
@@ -313,8 +356,8 @@
                         <input type="text" class="filter-input" placeholder="Keres..." oninput="handleFilter('status', this.value)">
                     </th>
                     <th class="col-score">
-                        <div class="th-title" onclick="handleSort('score')">Pontszám <span id="sort-icon-score" class="sort-icon"></span></div>
-                        <input type="text" class="filter-input" placeholder="Keres (pl. 10)..." oninput="handleFilter('score', this.value)">
+                        <div class="th-title" onclick="handleSort('scoreEndi')">Pontszám <span id="sort-icon-score" class="sort-icon"></span></div>
+                        <input type="text" class="filter-input" placeholder="Keres..." disabled style="opacity: 0.3;">
                     </th>
                     <th class="col-comment">
                         <div class="th-title" onclick="handleSort('comment')">Megjegyzés <span id="sort-icon-comment" class="sort-icon"></span></div>
@@ -331,40 +374,194 @@
 
 <div id="notification">Értékelések kimásolva a vágólapra! Most már beillesztheted (Ctrl+V) Messengerbe vagy Discordba.</div>
 
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settings-modal">
+    <div class="modal">
+        <h2>GitHub Szinkronizáció</h2>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+            Add meg a GitHub tokenedet (Personal Access Token), hogy az értékelések és a feketelista közvetlenül a GitHub repo-dba mentsődjenek. Ezt a böngésződ helyileg biztonságban tárolja.
+        </p>
+        <label>Repository neve (pl. Kriszi/Kriszihonlap):</label>
+        <input type="text" id="gh-repo" placeholder="tulajdonos/reponév">
+        
+        <label>GitHub Token (ghp_...):</label>
+        <input type="password" id="gh-token" placeholder="Token beillesztése">
+        
+        <div class="modal-actions">
+            <button class="btn" onclick="closeSettings()">Mégse</button>
+            <button class="btn btn-primary" onclick="saveSettings()">Mentés és Betöltés</button>
+        </div>
+    </div>
+</div>
+
 <script>
     const tbody = document.getElementById('table-body');
-    const storageKey = 'kriszi_pioca_ratings';
+    const storageKey = 'kriszi_pioca_gh';
 
-    // Állapotok tárolása a JS-ben
-    let rawFiles = []; // A JSON-ből beolvasott nyers fájllista
-    let processedData = []; // Az adatok, amiket megjelenítünk (id, file, score, comment, status)
+    // Állapotok
+    let rawFiles = []; 
+    let processedData = []; 
     
     // Szűrési és rendezési paraméterek
     let currentSort = { col: 'id', asc: true };
-    let currentFilters = { id: '', file: '', status: '', score: '', comment: '' };
+    let currentFilters = { id: '', file: '', status: '', comment: '' };
 
-    // Betöltjük a korábban mentett értékeléseket localStorage-ből
-    let savedData = JSON.parse(localStorage.getItem(storageKey)) || {};
-    let blacklistedFiles = JSON.parse(localStorage.getItem('kriszi_pioca_blacklist')) || [];
+    // Adatszerkezet (ezt szinkronizáljuk a GitHubra)
+    let sharedData = {
+        ratings: {},
+        blacklist: []
+    };
+    
+    let ghConfig = JSON.parse(localStorage.getItem(storageKey)) || { repo: '', token: '' };
+    let fileSha = null;
+
+    // --- BASE64 HELPER (UTF-8 támogatással) ---
+    function b64EncodeUnicode(str) {
+        return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,
+            function toSolidBytes(match, p1) {
+                return String.fromCharCode('0x' + p1);
+        }));
+    }
+    
+    function b64DecodeUnicode(str) {
+        return decodeURIComponent(atob(str).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+    }
+
+    // --- GITHUB API FUNKCIÓK ---
+    
+    async function initData() {
+        if (!ghConfig.repo || !ghConfig.token) {
+            // Fallback localStorage ha nincs github beállítva
+            sharedData.ratings = JSON.parse(localStorage.getItem('kriszi_pioca_ratings_v2')) || {};
+            sharedData.blacklist = JSON.parse(localStorage.getItem('kriszi_pioca_blacklist_v2')) || [];
+            
+            // Migráció a régi verzióból ha van
+            let oldData = JSON.parse(localStorage.getItem('kriszi_pioca_ratings')) || {};
+            if (Object.keys(oldData).length > 0 && Object.keys(sharedData.ratings).length === 0) {
+                for (const [key, val] of Object.entries(oldData)) {
+                    sharedData.ratings[key] = {
+                        scoreEndi: val.score,
+                        scoreKriszi: null,
+                        comment: val.comment,
+                        status: val.status
+                    };
+                }
+            }
+            let oldBlacklist = JSON.parse(localStorage.getItem('kriszi_pioca_blacklist')) || [];
+            if (oldBlacklist.length > 0 && sharedData.blacklist.length === 0) {
+                sharedData.blacklist = oldBlacklist;
+            }
+
+            await loadHtmlFiles();
+            return;
+        }
+
+        try {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">Szinkronizáció a GitHubbal...</td></tr>`;
+            
+            const res = await fetch(`https://api.github.com/repos/${ghConfig.repo}/contents/shared_data.json`, {
+                headers: { 
+                    'Authorization': `token ${ghConfig.token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                },
+                cache: 'no-store'
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                fileSha = data.sha;
+                const text = b64DecodeUnicode(data.content);
+                sharedData = JSON.parse(text);
+                
+                if (!sharedData.ratings) sharedData.ratings = {};
+                if (!sharedData.blacklist) sharedData.blacklist = [];
+            } else if (res.status === 404) {
+                // Nem létezik még a fájl, üresen indulunk
+                sharedData = { ratings: {}, blacklist: [] };
+            } else {
+                console.error('Github fetch hiba', await res.text());
+                alert("Hiba történt a GitHub letöltésekor. Lehet, hogy rossz a Repo név vagy a Token!");
+            }
+        } catch (e) {
+            console.error("Nem sikerült letölteni a githubról", e);
+        }
+        
+        await loadHtmlFiles();
+    }
+
+    let saveTimeout = null;
+    function scheduleSave() {
+        if (!ghConfig.repo || !ghConfig.token) {
+            localStorage.setItem('kriszi_pioca_ratings_v2', JSON.stringify(sharedData.ratings));
+            localStorage.setItem('kriszi_pioca_blacklist_v2', JSON.stringify(sharedData.blacklist));
+            return;
+        }
+        
+        const indicator = document.getElementById('save-status');
+        indicator.classList.add('saving');
+        
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(saveToGithub, 2000);
+    }
+
+    async function saveToGithub() {
+        const indicator = document.getElementById('save-status');
+        try {
+            const content = b64EncodeUnicode(JSON.stringify(sharedData, null, 2));
+            const body = {
+                message: "Update ratings and blacklist via Web UI",
+                content: content
+            };
+            if (fileSha) body.sha = fileSha;
+
+            const res = await fetch(`https://api.github.com/repos/${ghConfig.repo}/contents/shared_data.json`, {
+                method: 'PUT',
+                headers: { 
+                    'Authorization': `token ${ghConfig.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                fileSha = data.content.sha;
+                console.log("Sikeresen mentve a GitHubra!");
+                indicator.classList.remove('saving');
+                indicator.style.opacity = '1';
+                setTimeout(() => indicator.style.opacity = '0', 2000);
+            } else {
+                console.error("Github mentési hiba", await res.text());
+                indicator.classList.remove('saving');
+                indicator.style.backgroundColor = 'var(--danger)';
+            }
+        } catch (e) {
+            console.error("Hiba a mentés során", e);
+            indicator.classList.remove('saving');
+        }
+    }
+
+
+    // --- MEGJELENÍTÉS ---
 
     function updateBlacklistUI() {
         const btn = document.getElementById('blacklist-clear-btn');
-        if (blacklistedFiles.length > 0) {
+        if (sharedData.blacklist && sharedData.blacklist.length > 0) {
             btn.style.display = 'inline-flex';
-            btn.innerHTML = `♻️ Feketelista ürítése (${blacklistedFiles.length})`;
+            btn.innerHTML = `♻️ Feketelista ürítése (${sharedData.blacklist.length})`;
         } else {
             btn.style.display = 'none';
         }
     }
 
-    // 1. LÉPÉS: Fájlok betöltése
-    async function loadFiles() {
+    async function loadHtmlFiles() {
         try {
             const response = await fetch('files.json?t=' + new Date().getTime());
             if (!response.ok) throw new Error("files.json nem található");
             
             rawFiles = await response.json();
-            // Sorba rendezzük ABC szerint, így mindig fix lesz a sorszám (ID)
             rawFiles.sort(); 
             
             buildData();
@@ -375,17 +572,17 @@
         }
     }
 
-    // 2. LÉPÉS: Adatszerkezet felépítése
     function buildData() {
         let currentId = 1;
         processedData = rawFiles
-            .filter(file => !blacklistedFiles.includes(file))
+            .filter(file => !(sharedData.blacklist || []).includes(file))
             .map((file) => {
-                const data = savedData[file] || { score: null, comment: '', status: '' };
+                const data = sharedData.ratings[file] || { scoreEndi: null, scoreKriszi: null, comment: '', status: '' };
                 return {
                     id: currentId++,
                     file: file,
-                    score: data.score,
+                    scoreEndi: data.scoreEndi,
+                    scoreKriszi: data.scoreKriszi,
                     comment: data.comment || '',
                     status: data.status || ''
                 };
@@ -393,7 +590,6 @@
         updateBlacklistUI();
     }
 
-    // 3. LÉPÉS: Rendezés beállítása
     window.handleSort = function(col) {
         if (currentSort.col === col) {
             currentSort.asc = !currentSort.asc;
@@ -402,44 +598,36 @@
             currentSort.asc = true;
         }
         
-        // Frissítjük a nyilakat
         document.querySelectorAll('.sort-icon').forEach(el => el.innerHTML = '');
-        document.getElementById(`sort-icon-${col}`).innerHTML = currentSort.asc ? '▲' : '▼';
+        document.getElementById(`sort-icon-${col === 'scoreEndi' ? 'score' : col}`).innerHTML = currentSort.asc ? '▲' : '▼';
 
         renderTable();
     }
 
-    // 4. LÉPÉS: Szűrés beállítása
     window.handleFilter = function(col, value) {
         currentFilters[col] = value.toLowerCase();
         renderTable();
     }
 
-    // 5. LÉPÉS: Táblázat generálása (Szűrés és Rendezés után)
     function renderTable() {
-        // --- Szűrés (Filter) ---
         let displayData = processedData.filter(row => {
             if (currentFilters.id && !row.id.toString().includes(currentFilters.id)) return false;
             if (currentFilters.file && !row.file.toLowerCase().includes(currentFilters.file)) return false;
             
-            // Státusz szöveges keresése
             let statusText = "";
             if (row.status === 'danger') statusText = "hibás";
             if (row.status === 'warning') statusText = "részben hibás";
             if (row.status === 'success') statusText = "jó";
             if (currentFilters.status && !statusText.includes(currentFilters.status)) return false;
 
-            if (currentFilters.score && (row.score === null || !row.score.toString().includes(currentFilters.score))) return false;
             if (currentFilters.comment && !row.comment.toLowerCase().includes(currentFilters.comment)) return false;
             return true;
         });
 
-        // --- Rendezés (Sort) ---
         displayData.sort((a, b) => {
             let valA = a[currentSort.col];
             let valB = b[currentSort.col];
 
-            // Null pontszámokat a végére vagy elejére soroljuk
             if (valA === null) valA = -1;
             if (valB === null) valB = -1;
 
@@ -451,7 +639,6 @@
             return 0;
         });
 
-        // --- DOM Generálás ---
         tbody.innerHTML = '';
         if (displayData.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">Nincs találat a szűrések alapján.</td></tr>`;
@@ -461,18 +648,19 @@
         displayData.forEach(row => {
             const tr = document.createElement('tr');
             
-            // Státusz gombok HTML
             const btnDanger = row.status === 'danger' ? 'active-danger' : '';
             const btnWarning = row.status === 'warning' ? 'active-warning' : '';
             const btnSuccess = row.status === 'success' ? 'active-success' : '';
 
-            // Pontszám gombok HTML
-            let scoreButtonsHtml = '<div class="score-container">';
-            for(let i = 0; i <= 10; i++) {
-                const isActive = row.score == i ? 'active' : '';
-                scoreButtonsHtml += `<div class="score-btn ${isActive}" onclick="handleScoreClick('${row.file}', ${i})">${i}</div>`;
-            }
-            scoreButtonsHtml += '</div>';
+            let getScoreHtml = (user, currentScore) => {
+                let html = `<div style="margin-bottom: 6px; display: flex; align-items: center;"><strong style="color:var(--text-secondary);display:inline-block;width:55px;">${user}:</strong> <div class="score-container" style="display:inline-flex;">`;
+                for(let i = 0; i <= 10; i++) {
+                    const isActive = currentScore == i ? 'active' : '';
+                    html += `<div class="score-btn ${isActive}" onclick="handleScoreClick('${row.file}', '${user}', ${i})">${i}</div>`;
+                }
+                html += '</div></div>';
+                return html;
+            };
 
             tr.innerHTML = `
                 <td class="col-id">#${row.id}</td>
@@ -493,7 +681,8 @@
                     </div>
                 </td>
                 <td class="col-score">
-                    ${scoreButtonsHtml}
+                    ${getScoreHtml('Endi', row.scoreEndi)}
+                    ${getScoreHtml('Kriszi', row.scoreKriszi)}
                 </td>
                 <td class="col-comment">
                     <textarea class="comment-textarea" placeholder="Ide írd a részletes véleményed, vagy hogy mi a hiba..." oninput="saveComment('${row.file}', this.value)">${row.comment}</textarea>
@@ -506,69 +695,84 @@
     // --- ESEMÉNYKEZELŐK ---
 
     window.handleStatusClick = function(file, newStatus) {
-        const data = savedData[file] || { score: null, comment: '', status: '' };
+        if(!sharedData.ratings[file]) sharedData.ratings[file] = { scoreEndi: null, scoreKriszi: null, comment: '', status: '' };
         
-        // Ha ugyanarra kattint, akkor törli a státuszt (toggle)
-        if (data.status === newStatus) {
-            data.status = '';
+        if (sharedData.ratings[file].status === newStatus) {
+            sharedData.ratings[file].status = '';
         } else {
-            data.status = newStatus;
+            sharedData.ratings[file].status = newStatus;
         }
 
-        savedData[file] = data;
-        localStorage.setItem(storageKey, JSON.stringify(savedData));
-        
-        // Frissítjük a memóriában lévő tömböt is, majd újra renderelünk
         const rowData = processedData.find(r => r.file === file);
-        if(rowData) rowData.status = data.status;
+        if(rowData) rowData.status = sharedData.ratings[file].status;
         renderTable();
+        scheduleSave();
     }
 
-    window.handleScoreClick = function(file, selectedScore) {
-        const data = savedData[file] || { score: null, comment: '', status: '' };
-        const currentScore = data.score;
+    window.handleScoreClick = function(file, user, selectedScore) {
+        if(!sharedData.ratings[file]) sharedData.ratings[file] = { scoreEndi: null, scoreKriszi: null, comment: '', status: '' };
+        
+        const prop = user === 'Endi' ? 'scoreEndi' : 'scoreKriszi';
+        const currentScore = sharedData.ratings[file][prop];
 
-        // Ha már volt pontozva és másra kattint, kérdezzünk rá
         if (currentScore !== null && currentScore != selectedScore) {
-            const confirmed = confirm(`Ezt az oldalt már értékelted (${currentScore} pont). Biztosan módosítod ${selectedScore} pontra?`);
+            const confirmed = confirm(`Ezt az oldalt már értékelte ${user} (${currentScore} pont). Biztosan módosítod ${selectedScore} pontra?`);
             if (!confirmed) return;
         }
 
-        data.score = selectedScore;
-        savedData[file] = data;
-        localStorage.setItem(storageKey, JSON.stringify(savedData));
+        sharedData.ratings[file][prop] = selectedScore;
 
         const rowData = processedData.find(r => r.file === file);
-        if(rowData) rowData.score = data.score;
+        if(rowData) rowData[prop] = selectedScore;
         renderTable();
+        scheduleSave();
     }
 
     window.saveComment = function(file, commentText) {
-        const data = savedData[file] || { score: null, comment: '', status: '' };
-        data.comment = commentText;
-        savedData[file] = data;
-        localStorage.setItem(storageKey, JSON.stringify(savedData));
+        if(!sharedData.ratings[file]) sharedData.ratings[file] = { scoreEndi: null, scoreKriszi: null, comment: '', status: '' };
+        sharedData.ratings[file].comment = commentText;
 
         const rowData = processedData.find(r => r.file === file);
-        if(rowData) rowData.comment = data.comment;
+        if(rowData) rowData.comment = commentText;
+        scheduleSave();
     }
 
     window.blacklistFile = function(file) {
-        if(confirm(`Biztosan feketelistára teszed ezt a fájlt? Később nem fog megjelenni a listában: ${file}`)) {
-            blacklistedFiles.push(file);
-            localStorage.setItem('kriszi_pioca_blacklist', JSON.stringify(blacklistedFiles));
+        if(confirm(`Biztosan feketelistára teszed ezt a fájlt? Később senkinek nem fog megjelenni a listában: ${file}`)) {
+            if(!sharedData.blacklist) sharedData.blacklist = [];
+            sharedData.blacklist.push(file);
             buildData();
             renderTable();
+            scheduleSave();
         }
     }
 
     window.clearBlacklist = function() {
-        if(confirm(`Biztosan üríted a feketelistát? (${blacklistedFiles.length} fájl újra megjelenik)`)) {
-            blacklistedFiles = [];
-            localStorage.setItem('kriszi_pioca_blacklist', JSON.stringify(blacklistedFiles));
+        if(confirm(`Biztosan üríted a feketelistát? (${sharedData.blacklist.length} fájl újra megjelenik mindenkinek)`)) {
+            sharedData.blacklist = [];
             buildData();
             renderTable();
+            scheduleSave();
         }
+    }
+
+    // --- BEÁLLÍTÁSOK ---
+    window.openSettings = function() {
+        document.getElementById('gh-repo').value = ghConfig.repo || '';
+        document.getElementById('gh-token').value = ghConfig.token || '';
+        document.getElementById('settings-modal').style.display = 'flex';
+    }
+
+    window.closeSettings = function() {
+        document.getElementById('settings-modal').style.display = 'none';
+    }
+
+    window.saveSettings = function() {
+        ghConfig.repo = document.getElementById('gh-repo').value.trim();
+        ghConfig.token = document.getElementById('gh-token').value.trim();
+        localStorage.setItem(storageKey, JSON.stringify(ghConfig));
+        closeSettings();
+        initData(); // Újratöltjük az egészet a githubról
     }
 
     // --- EXPORTÁLÁS ---
@@ -576,11 +780,10 @@
         let exportText = "📋 PIÓCÁS OLDALAK ÉRTÉKELÉSEI ÉS HIBÁI:\n\n";
         let hasData = false;
 
-        // Az eredeti processedData alapján megyünk végig, hogy ID sorrendben legyen az export
         processedData.forEach(row => {
-            const { id, file, score, comment, status } = row;
+            const { id, file, scoreEndi, scoreKriszi, comment, status } = row;
             
-            if (score !== null || (comment && comment.trim() !== '') || status !== '') {
+            if (scoreEndi !== null || scoreKriszi !== null || (comment && comment.trim() !== '') || status !== '') {
                 hasData = true;
                 exportText += `🔹 [#${id}] ${file}\n`;
                 
@@ -588,7 +791,8 @@
                 if (status === 'warning') exportText += `   Állapot: ⚠️ RÉSZBEN HIBÁS\n`;
                 if (status === 'success') exportText += `   Állapot: ✅ JÓ\n`;
                 
-                if (score !== null) exportText += `   Pontszám: ${score}/10\n`;
+                if (scoreEndi !== null) exportText += `   Endi pont: ${scoreEndi}/10\n`;
+                if (scoreKriszi !== null) exportText += `   Kriszi pont: ${scoreKriszi}/10\n`;
                 if (comment && comment.trim() !== '') exportText += `   Megjegyzés: ${comment.trim()}\n`;
                 exportText += "\n";
             }
@@ -598,7 +802,6 @@
             exportText = "Még nincs kitöltve egyetlen értékelés sem.";
         }
 
-        // Vágólapra másolás
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(exportText).then(() => {
                 showNotification();
@@ -633,8 +836,8 @@
         }, 4000);
     }
 
-    // Inicializálás
-    loadFiles();
+    // Indítás
+    initData();
 </script>
 
 </body>
